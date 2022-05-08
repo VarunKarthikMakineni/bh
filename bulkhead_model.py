@@ -20,6 +20,7 @@ class Bulkhead:
         # bulkhead properties
         self.bulkhead_yield_strength = 240000000 # N/m2 for aluminium 6061-T6 according to wikipedia
         self.bulkhead_shear_strength = 207000000 # N/m2 for aluminium 6061-T6 according to asm.matweb.com
+        self.bulkhead_density = 2700 # kg/m3
 
         self.update()
 
@@ -37,7 +38,8 @@ class Bulkhead:
         screw_area = (self.max_design_load / self.screw_count) / self.screw_shear_strength
         screw_dia = (( 4 * screw_area / np.pi ) ** 0.5)
         screw_dia *= 1000 # mm
-        screw_dia = np.ceil(screw_dia) # round up to nearest mm
+        screw_dia = np.ceil(screw_dia) # round up to next mm
+        screw_dia = max(screw_dia,2) # minimum dia is 2mm
 
 
         # screw length based on bearing stress assuming perfect fit
@@ -67,13 +69,19 @@ class Bulkhead:
         length_of_screw_in_bulkhead = screw_length - self.airframe_thickness
         
         edge_thickness = minimum_area_in_shear / length_of_screw_in_bulkhead
+        
+        if(edge_thickness < 0.002):
+            edge_thickness = 0.002
 
-        print(edge_thickness)
+        self.edge_thickness = screw_dia
         # this thickness value will not include the hole because obtained thickness is very small compared ot screw sizes
-        bulkhead_thickness = 2 * max(edge_thickness , 0.002) + screw_dia
+        bulkhead_thickness = 2 * edge_thickness + screw_dia
 
         return bulkhead_thickness
 
-
-bulk = Bulkhead()
-print(bulk.bulkhead_thickness())
+    def bulkhead_mass(self):
+        
+        self.update()
+        volume = self.bulkhead_thickness() * np.pi * self.bulkhead_diameter ** 2 / 4
+        mass = volume * self.bulkhead_density
+        return mass
